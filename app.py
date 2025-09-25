@@ -1,6 +1,9 @@
+import os
 from datetime import datetime
 from dotenv import load_dotenv
 import tempfile
+import json
+import re
 
 import streamlit as st
 from streamlit.runtime.uploaded_file_manager import UploadedFile
@@ -130,9 +133,11 @@ user_profile_info = {}
 with st.popover("Your name"):
     user_name = st.text_input("Enter your name:")
     now = datetime.now()
-    now_str = now.strftime("%d%m%Y %H:%M:%S")
-    current_login = now_str + " " + user_name
+    now = now.strftime("%d%m%Y%H:%M:%S")
+    current_login = now + "_" + user_name
     user_profile_info["current_login"] = current_login
+
+tab1, tab2 = st.tabs(["Document Q&A", "Conversational Mode"])
 
 with st.form(key="my_form"):
     user_uploads = st.file_uploader(
@@ -159,20 +164,47 @@ with st.form(key="my_form"):
                     all_docs.extend(docs)
             chunks = chunk_docs(all_docs)
             st.success(f"Created {len(chunks)} chunks from uploaded PDFs.")
+            user_profile_info["num_chunks"] = chunks
 
             # Store chunks in Qdrant
             vectorstore = store_in_qdrant(chunks, embedding_model_name, collection_name)
             st.success(f"Chunks stored in Qdrant collection '{collection_name}'.")
+            user_profile_info["vectorstore"] = vectorstore
 
             # Retrieve and generate answers
             if user_prompt:
                 with st.spinner("Retrieving relevant chunks..."):
                     top_chunks = retrieve_similar_chunks(vectorstore, user_prompt)
+                    user_profile_info["top_chunks"] = top_chunks
                 st.subheader("Top Retrieved Chunks")
                 for idx, chunk in enumerate(top_chunks, 1):
-                    st.markdown(f"**Chunk {idx}:** {chunk.page_content[:500]}...")
+                    st.markdown(f"**Chunk {idx}:** {chunk.page_content}")
 
                 with st.spinner("Generating answer using Gemini..."):
                     answer = generate_answer_from_chunks(top_chunks, user_prompt)
+                    user_profile_info["generated_answer"] = answer
                 st.subheader("LLM Answer")
                 st.write(answer)
+
+
+        # Logging
+        logs_dir = "logs"
+        os.makedirs(logs_dir, exist_ok=True)
+
+        log_data = {
+            "current_login": user_profile_info.get("current_login", ""),
+            "uploaded_files": [f.name for f in user_profile_info.get("user_uploads", []) if f is not None],
+            "user_prompt": user_profile_info.get("user_prompt", ""),
+            "answer": user_profile_info.get("generated_answer", "")
+        }
+
+        # Replace unsafe characters with _
+        filename = re.sub(r'[<>:"/\\|?*]', '_', log_data["current_login"])
+
+        log_file_path = os.path.join(logs_dir, f"{filename}.json")
+
+        # Write JSON log
+        with open(f"{log_file_path}", "w") as f:
+            json.dump(log_data, f)
+
+        st.info(f"Logs stored in {log_file_path}")
