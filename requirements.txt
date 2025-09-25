@@ -1,0 +1,9 @@
+streamlit
+qdrant-client
+sentence-transformers
+python-dotenv
+langchain-google-genai
+langchain-text-splitters
+langchain-community
+fitz
+langchain-core
