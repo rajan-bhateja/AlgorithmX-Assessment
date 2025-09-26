@@ -9,7 +9,7 @@ from sqlalchemy.orm import sessionmaker
 # ==============================
 # DATABASE CONFIGURATION
 # ==============================
-DB_URL = "postgresql+psycopg2://admin:admin123@localhost:5432/algox_logs"
+DB_URL = "postgresql+psycopg2://admin:admin123@localhost:5432/algorithmx_db"
 engine = create_engine(DB_URL, echo=False)
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
