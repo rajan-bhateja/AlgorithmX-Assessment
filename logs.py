@@ -2,13 +2,18 @@ import os
 import json
 import re
 from sqlalchemy import create_engine, Column, String, Text, Integer, DateTime
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import declarative_base
+from dotenv import load_dotenv
 
+
+load_dotenv()
 # ==============================
 # DATABASE CONFIGURATION
 # ==============================
-DB_URL = "postgresql+psycopg2://admin:admin123@localhost:5432/algorithmx_db"
+DB_URL = os.getenv("DATABASE_URL")
+if not DB_URL:
+    raise ValueError("DATABASE_URL not set — check:\n- docker-compose.yaml (running Docker)\n- .env (running locally)")
 engine = create_engine(DB_URL, echo=False)
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
