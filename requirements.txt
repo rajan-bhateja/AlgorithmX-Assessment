@@ -4,6 +4,7 @@ sentence-transformers
 python-dotenv
 langchain-text-splitters
 langchain-community
+langchain-huggingface
 langchain-core
 fastapi
 google
@@ -11,3 +12,4 @@ protobuf
 langchain-google-genai
 SQLAlchemy
 psycopg2-binary
+uvicorn
