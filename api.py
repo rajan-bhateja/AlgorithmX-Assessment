@@ -1,9 +1,9 @@
 from fastapi import FastAPI, UploadFile, File, Form
-import tempfile
+from tempfile import NamedTemporaryFile
 from datetime import datetime
 from logs import log_response
 
-from utils import load_pdf_file, chunk_docs, store_in_qdrant, retrieve_similar_chunks, generate_answer_from_chunks
+from utils import *
 from langchain_community.vectorstores import Qdrant
 
 app = FastAPI()
@@ -25,7 +25,7 @@ async def upload_pdf_endpoint(
     current_login = f"{now_str}_{user_name}"
 
     # Save FastAPI file to a real temporary file
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+    with NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
         tmp.write(await file.read())
         tmp_path = tmp.name
 

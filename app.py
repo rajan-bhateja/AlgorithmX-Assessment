@@ -1,17 +1,7 @@
-import os
-import tempfile
 from datetime import datetime
-import json
-import re
 
 import streamlit as st
-from utils import (
-    load_pdf_file,
-    chunk_docs,
-    store_in_qdrant,
-    retrieve_similar_chunks,
-    generate_answer_from_chunks
-)
+from utils import *
 from logs import log_response
 
 
