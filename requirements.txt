@@ -7,9 +7,8 @@ langchain-community
 langchain-huggingface
 langchain-core
 fastapi
-google
+google-genai
 protobuf
-langchain-google-genai
 SQLAlchemy
 psycopg2-binary
 uvicorn
