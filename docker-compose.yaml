@@ -23,7 +23,7 @@ services:
     build:
       context: .  # path to FastAPI folder
       dockerfile: Dockerfile_fastapi
-    container_name: algorithmx-backend
+    container_name: algorithmx-fastapi
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/${POSTGRES_DB}
       QDRANT_URL: http://qdrant:${QDRANT_PORT}
@@ -39,7 +39,7 @@ services:
     build:
       context: .  # path to Streamlit folder
       dockerfile: Dockerfile_streamlit
-    container_name: algorithmx-frontend
+    container_name: algorithmx-streamlit
     environment:
       BACKEND_URL: http://backend:${BACKEND_PORT}
     ports:
