@@ -10,3 +10,4 @@ google
 protobuf
 langchain-google-genai
 SQLAlchemy
+psycopg2-binary

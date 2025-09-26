@@ -15,7 +15,7 @@ load_dotenv()
 
 
 # CONFIG
-embedding_model_name = "sentence-transformers/all-MiniLM-L6-v2"
+# embedding_model_name = "sentence-transformers/all-MiniLM-L6-v2"
 gemini_model = "gemini-2.5-flash"
 collection_name = "word_embeddings"
 qdrant_path = "./qdrant_data"
@@ -35,9 +35,9 @@ def chunk_docs(documents, chunk_size: int = 500, chunk_overlap: int = 200) -> li
     return text_splitter.split_documents(documents)
 
 
-def store_in_qdrant(chunks: list[Document], model_name: str = embedding_model_name, path: str = qdrant_path) -> Qdrant:
+def store_in_qdrant(chunks: list[Document], path: str = qdrant_path) -> Qdrant:
     """Encode and store chunks in Qdrant"""
-    embeddings = HuggingFaceEmbeddings(model_name=model_name)
+    embeddings = HuggingFaceEmbeddings()
     client = QdrantClient(path=path)
 
     existing_collections = [col.name for col in client.get_collections().collections]
@@ -57,7 +57,7 @@ def store_in_qdrant(chunks: list[Document], model_name: str = embedding_model_na
     return vectorstore
 
 
-def retrieve_similar_chunks(vectorstore: Qdrant, query: str, top_k: int = 3) -> list[Document]:
+def retrieve_similar_chunks(vectorstore: Qdrant, query: str, top_k: int = 5) -> list[Document]:
     """Retrieve top-k most similar chunks"""
     return vectorstore.similarity_search(query, top_k)
 

@@ -1,0 +1,47 @@
+version: "4.47"
+
+services:
+  postgres:
+    image: postgres:latest
+    container_name: algorithmx-postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: algox_logs
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin"]
+      interval: 5s
+      retries: 5
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - ./qdrant_data:/qdrant/storage
+    depends_on:
+      - postgres
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:6333/collections || exit 1"]
+      interval: 5s
+      retries: 5
+
+  fastapi:
+    build: .
+    container_name: algorithmx-api
+    command: uvicorn api:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - qdrant
+    volumes:
+      - ./:/app
+
+volumes:
+  pg_data:
