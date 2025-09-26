@@ -1,210 +1,92 @@
 import os
-from datetime import datetime
-from dotenv import load_dotenv
 import tempfile
+from datetime import datetime
 import json
 import re
 
 import streamlit as st
-from streamlit.runtime.uploaded_file_manager import UploadedFile
-
-from google import genai
-from langchain_core.documents import Document
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders import PyMuPDFLoader
-
-from langchain_qdrant import QdrantVectorStore
-from langchain_community.vectorstores import Qdrant
-from qdrant_client.grpc import VectorParams, Distance
-from qdrant_client import QdrantClient
+from utils import (
+    load_pdf_file,
+    chunk_docs,
+    store_in_qdrant,
+    retrieve_similar_chunks,
+    generate_answer_from_chunks
+)
+from logs import log_response
 
 
-# Load the environment variables (API Keys)
-load_dotenv()
-
-# VARIABLES (Change accordingly)
-embedding_model_name = "sentence-transformers/all-MiniLM-L6-v2"
-gemini_model = "gemini-2.5-flash"
-collection_name = "word_embeddings"
-
-
-def load_pdf_file(uploaded_file: UploadedFile) -> list[Document]:
-    """
-    Load PDF into temporary files to be parsed by PyMuPDFLoader.
-    Returns a Langchain Document object.
-    """
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
-        temp_file.write(uploaded_file.read())
-        temp_file_path = temp_file.name
-    print(f"Temporary file created at {temp_file_path}")
-
-    # Load the Temp file into PyMuPDFLoader
-    # Single mode to parse the entire PDF as a single document
-    doc = PyMuPDFLoader(temp_file_path, mode="single").load()
-    return doc
-
-
-def chunk_docs(documents, chunk_size: int = 500, chunk_overlap: int = 100) -> list[Document]:
-    """Split Documents into specified chunk sizes"""
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap, length_function=len)
-    raw_chunks = text_splitter.split_documents(documents)
-    return raw_chunks
-
-
-def store_in_qdrant(chunks: list[Document], embedding_model: str, collection_name: str) -> Qdrant:
-    """Encode and store chunks in Qdrant"""
-
-    # Embeddings
-    embeddings = HuggingFaceEmbeddings(model_name=embedding_model)
-    # Local persistence
-    client = QdrantClient(url="http://localhost:6333")
-
-    # Check for any existing collections
-    existing_collections = [col.name for col in client.get_collections().collections]
-    if collection_name not in existing_collections:
-        client.create_collection(
-            collection_name=collection_name,
-            force_recreate=True
-            # vectors_config=VectorParams(size=384)
-        )
-
-    vectorstore = Qdrant.from_documents(
-        documents=chunks,
-        embedding=embeddings,
-        collection_name=collection_name,
-        force_recreate=True
-    )
-    return vectorstore
-
-
-def retrieve_similar_chunks(
-        vectorstore: Qdrant,
-        query: str,
-        embedding_model: str = embedding_model_name,
-        top_k: int = 3
-) -> list[Document]:
-    """
-        Embed a user query and retrieve top-k most similar document chunks from Qdrant.
-
-        Args:
-            vectorstore (Qdrant): The Qdrant vector store containing PDF chunks.
-            query (str): User query to search for.
-            embedding_model_name (str): HuggingFace wrapped Embedding Models. Default: sentence-transformers/all-MiniLM-L6-v2.
-            top_k (int): Number of top similar chunks to retrieve.
-
-        Returns:
-            List[Document]: Top-k most similar Document chunks.
-    """
-    # Initialize the embedding model
-    embeddings = HuggingFaceEmbeddings(model_name=embedding_model)
-    # Retrieve top-k results
-    results = vectorstore.similarity_search(query, top_k)
-
-    return results
-
-
-def generate_answer_from_chunks(
-        chunks: list,
-        user_query: str,
-        llm_model: str = gemini_model
-) -> str:
-    """Generate answer using LLM from retrieved chunks"""
-    context = "\n\n".join([chunk.page_content for chunk in chunks])
-    prompt = f"Answer the following question based only on the context:\n\n{context}\n\nQuestion: {user_query}\n\nAnswer:"
-
-    # Using the Google's own Gemini API
-    llm = genai.Client()
-    response = llm.models.generate_content(
-        model=llm_model,
-        contents=prompt,
-    )
-
-    return response.candidates[0].content.parts[0].text
-
-
-# STREAMLIT UI
-st.set_page_config(page_title="AlgorithmX Assessment - RAG App", layout="wide")
-st.title("AlgorithmX Assessment - RAG App")
+# Streamlit page config
+st.set_page_config(page_title="AlgorithmX RAG App", layout="wide")
+st.title("AlgorithmX RAG App")
 st.caption("Powered by Gemini and Qdrant")
 
-user_profile_info = {}
+# Initialize session state for logs
+if "logs" not in st.session_state:
+    st.session_state["logs"] = []
 
-with st.popover("Your name"):
-    user_name = st.text_input("Enter your name:")
-    now = datetime.now()
-    now = now.strftime("%d%m%Y%H:%M:%S")
-    current_login = now + "_" + user_name
-    user_profile_info["current_login"] = current_login
+# User info
+user_name = st.text_input("Enter your name:")
 
-tab1, tab2 = st.tabs(["Document Q&A", "Conversational Mode"])
+home_tab, conversation_tab = st.tabs(["Home", "Conversation"])
 
-with st.form(key="my_form"):
-    user_uploads = st.file_uploader(
-        "Upload your PDF(s)", type="pdf", accept_multiple_files=True
-    )
-    user_profile_info["user_uploads"] = user_uploads
-    user_prompt = st.text_input(
-        "Ask questions about your PDF(s)",
-        placeholder="Explain the Transformer architecture"
-    )
-    user_profile_info["user_prompt"] = user_prompt
+# PDF upload + query
+with home_tab:
+    with st.form("upload_form"):
+        uploaded_files = st.file_uploader(
+            "Upload PDF(s)", type="pdf", accept_multiple_files=True
+        )
+        user_prompt = st.text_input(
+            "Ask questions about your PDF(s)",
+            placeholder="Explain the Transformer architecture"
+        )
+        submit = st.form_submit_button("Upload & Query")
 
-    submit = st.form_submit_button("Process PDFs & Query")
+    global answer
 
     if submit:
-        if not user_uploads:
-            st.error("Please upload at least one PDF to continue!")
+        if not user_name:
+            st.error("Please enter your name.")
+        elif not uploaded_files:
+            st.error("Please upload at least one PDF.")
         else:
-            # Load and chunk all PDFs
-            all_docs = []
-            for file in user_uploads:
+            for file in uploaded_files:
                 if file.type.endswith("pdf"):
+                    # Load PDF
                     docs = load_pdf_file(file)
-                    all_docs.extend(docs)
-            chunks = chunk_docs(all_docs)
-            st.success(f"Created {len(chunks)} chunks from uploaded PDFs.")
-            user_profile_info["num_chunks"] = chunks
-
-            # Store chunks in Qdrant
-            vectorstore = store_in_qdrant(chunks, embedding_model_name, collection_name)
-            st.success(f"Chunks stored in Qdrant collection '{collection_name}'.")
-            user_profile_info["vectorstore"] = vectorstore
-
-            # Retrieve and generate answers
-            if user_prompt:
-                with st.spinner("Retrieving relevant chunks..."):
+                    # Chunk docs
+                    chunks = chunk_docs(docs)
+                    # Store in Qdrant
+                    vectorstore = store_in_qdrant(chunks)
+                    # Retrieve relevant chunks
                     top_chunks = retrieve_similar_chunks(vectorstore, user_prompt)
-                    user_profile_info["top_chunks"] = top_chunks
-                st.subheader("Top Retrieved Chunks")
-                for idx, chunk in enumerate(top_chunks, 1):
-                    st.markdown(f"**Chunk {idx}:** {chunk.page_content}")
-
-                with st.spinner("Generating answer using Gemini..."):
+                    # Generate LLM answer
                     answer = generate_answer_from_chunks(top_chunks, user_prompt)
-                    user_profile_info["generated_answer"] = answer
-                st.subheader("LLM Answer")
-                st.write(answer)
+                    if answer:
+                        st.success(f"Answer generated for {file.name}!\n\nCheck the Conversations Tab for more!")
+                        with conversation_tab:
+                            # Display answer
+                            st.subheader(f"Gemini Response:")
+                            st.write(answer)
 
+                        # Create log entry
+                        now_str = datetime.now().strftime("%d%m%Y_%H%M%S")
+                        current_login = f"{now_str}_{user_name}"
+                        log_entry = {
+                            "source": "streamlit",
+                            "current_login": current_login,
+                            "user_prompt": user_prompt,
+                            "user_uploads": file.name,
+                            "answer": answer
+                        }
+                        log_path = log_response(
+                            source="streamlit",
+                            current_login=current_login,
+                            user_name=user_name,
+                            user_prompt=user_prompt,
+                            user_uploads=file.name,
+                            answer=answer
+                        )
+                        st.info(f"Logs saved to {log_path} and stored in PostgreSQL")
 
-        # Logging
-        logs_dir = "logs"
-        os.makedirs(logs_dir, exist_ok=True)
-
-        log_data = {
-            "current_login": user_profile_info.get("current_login", ""),
-            "uploaded_files": [f.name for f in user_profile_info.get("user_uploads", []) if f is not None],
-            "user_prompt": user_profile_info.get("user_prompt", ""),
-            "answer": user_profile_info.get("generated_answer", "")
-        }
-
-        # Replace unsafe characters with _
-        filename = re.sub(r'[<>:"/\\|?*]', '_', log_data["current_login"])
-
-        log_file_path = os.path.join(logs_dir, f"{filename}.json")
-
-        # Write JSON log
-        with open(f"{log_file_path}", "w") as f:
-            json.dump(log_data, f)
-
-        st.info(f"Logs stored in {log_file_path}")
+                        # Add to session state
+                        st.session_state.logs.append(log_entry)

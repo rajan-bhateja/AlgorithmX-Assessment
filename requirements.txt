@@ -2,9 +2,11 @@ streamlit
 qdrant-client
 sentence-transformers
 python-dotenv
-langchain-google-genai
 langchain-text-splitters
 langchain-community
 langchain-core
+fastapi
 google
 protobuf
+langchain-google-genai
+SQLAlchemy
