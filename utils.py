@@ -29,7 +29,7 @@ def load_pdf_file(uploaded_file) -> list[Document]:
     return PyMuPDFLoader(temp_file_path, mode="single").load()
 
 
-def chunk_docs(documents, chunk_size: int = 500, chunk_overlap: int = 200) -> list[Document]:
+def chunk_docs(documents, chunk_size: int = 1000, chunk_overlap: int = 100) -> list[Document]:
     """Split Documents into chunks"""
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap, length_function=len)
     return text_splitter.split_documents(documents)
@@ -66,10 +66,13 @@ def generate_answer_from_chunks(chunks: list[Document], user_query: str, llm_mod
     """Generate answer using Gemini"""
     context = "\n\n".join([chunk.page_content for chunk in chunks])
     prompt = (
-        f"Answer the following question based only on the context:\n\n"
-        f"{context}\n\n"
-        f"Question: {user_query}\n"
-        f"Answer:"
+    "You are a helpful assistant. Use only the information provided in the context below to answer the question. "
+    "If the context does not contain the answer, say 'The context does not provide enough information to answer.' "
+    "Do not use outside knowledge.\n\n"
+    f"Context:\n{context}\n\n"
+    f"Question: {user_query}\n"
+    "Mention the sources you used to generate the answer."
+    "Answer (be comprehensive and factual):"
     )
 
     # Using Google's own Gemini API
