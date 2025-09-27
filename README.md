@@ -107,9 +107,9 @@ Create a `.env` file in the root directory with the variables mentioned in `Envi
 docker run --name algorithmx-db -e POSTGRES_USER=username -e POSTGRES_PASSWORD=password -e POSTGRES_DB=algorithmx_db -p 5432:5432 -d postgres
 ```
 
-2. Initialize the Database
+2. Run the Qdrant Vector Database
 ```
-python -c "from logs import init_db; init_db()"
+docker run -p 6333:6333 qdrant/qdrant
 ```
 
 3. Launch the Streamlit App
