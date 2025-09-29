@@ -1,4 +1,4 @@
-## AlgorithmX Assessment - RAG App
+# AlgorithmX Assessment - RAG App
 
 This project demonstrates a Retrieval-Augmented Generation (RAG) system that integrates Streamlit, FastAPI, SQLAlchemy, PostgreSQL, and Gemini for intelligent document summarization and logging.
 
