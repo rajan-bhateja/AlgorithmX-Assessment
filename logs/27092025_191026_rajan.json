@@ -1,0 +1,9 @@
+{
+  "source": "fastapi",
+  "current_login": "27092025_191026_rajan",
+  "user_name": "rajan",
+  "user_prompt": "what's the difference between single attention and multi attention?",
+  "user_uploads": "attention_is_all_you_need.pdf",
+  "answer": "Multi-head attention allows the model to jointly attend to information from different representation subspaces at different positions. In contrast, with a single attention head, averaging inhibits this capability.\n\nSpecifically, Multi-head attention operates as follows:\n* It performs linear projections of queries (Q), keys (K), and values (V) to `dk`, `dk`, and `dv` dimensions, respectively, for each of its `h` heads. (Source: Page 4, paragraph above MultiHead equation)\n* On each of these projected versions, the attention function is performed in parallel, yielding `dv`-dimensional output values. (Source: Page 4, paragraph above MultiHead equation)\n* These output values from all heads are then concatenated and once again projected to produce the final values. (Source: Page 4, paragraph above MultiHead equation)\n* The formula for Multi-Head attention is given as `MultiHead(Q, K, V) = Concat(head1, ..., headh)W O`, where `headi = Attention(QW Q i , KW K i , V W V i )`. (Source: Page 4, MultiHead equation)\n\nFigure 2 also depicts Multi-Head Attention as consisting of several attention layers running in parallel, in contrast to Scaled Dot-Product Attention which is shown as a single attention process. (Source: Figure 2 caption, Page 3)",
+  "created_at": "2025-09-27T13:41:26.928124"
+}

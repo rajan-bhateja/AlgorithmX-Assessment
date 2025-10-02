@@ -1,0 +1,9 @@
+{
+  "source": "streamlit",
+  "current_login": "27092025_185310_rajan",
+  "user_name": "rajan",
+  "user_prompt": "what is this paper about?",
+  "user_uploads": "attention_is_all_you_need.pdf",
+  "answer": "This paper is about the self-attention mechanism, including Multi-Head Attention, its use in handling long-distance dependencies, anaphora resolution, and its applications in tasks like reading comprehension and abstractive summarization.",
+  "created_at": "2025-09-27T13:23:10.585202"
+}
